@@ -1,0 +1,48 @@
+name: 인스타 자동 게시
+
+on:
+  schedule:
+    # 매일 07:30 한국시간 (= 전날 22:30 UTC). GitHub 사정으로 몇 분~수십 분 늦어질 수 있음.
+    - cron: "30 22 * * *"
+  workflow_dispatch:
+    inputs:
+      post_date:
+        description: "게시할 날짜 (YYYY-MM-DD, 비우면 오늘)"
+        required: false
+      dry_run:
+        description: "점검만 하기 (게시하지 않음)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pillow
+
+      - name: git 사용자 설정
+        run: |
+          git config user.name "insta-autopost-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: 게시
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: "17841480053547861"
+          POST_DATE: ${{ inputs.post_date }}
+          # 예약 실행은 저장소 변수 PUBLISH_ENABLED=true 일 때만 실제 게시 (첫 게시 확인 전 안전장치)
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || (github.event_name == 'schedule' && vars.PUBLISH_ENABLED != 'true') }}
+        run: python scripts/publish.py
