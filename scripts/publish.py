@@ -160,6 +160,13 @@ def main():
                 f"{p.relative_to(ROOT).as_posix()}" for p in jpgs]
 
         if dry:
+            # 토큰 점검 (읽기 전용 — 아무것도 게시하지 않음)
+            acct = api("GET", ig_user, fields="username")
+            quota = api("GET", f"{ig_user}/content_publishing_limit",
+                        fields="quota_usage,config").get("data", [{}])[0]
+            print(f"토큰 정상: @{acct.get('username')} 계정, "
+                  f"오늘 게시 사용량 {quota.get('quota_usage')}/"
+                  f"{quota.get('config', {}).get('quota_total')}")
             print("\n[점검 완료] 문제 없음. 실제 게시 시 사용할 이미지 주소:")
             for u in urls:
                 print("  ", u)
